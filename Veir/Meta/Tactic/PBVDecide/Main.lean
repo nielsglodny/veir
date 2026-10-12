@@ -585,10 +585,10 @@ meta def introMaskedBitvectors (bvs : BitVecFVarsToRevert) (g : MVarId)
     introBitvecFVarUnchecked widthInfos g bvInfos bvFvarId widthTm
 
 /--
-Add `eq_iff` with the blast width pre-filled, which lifts equalities to the
-blast width by wrapping both sides in a `setWidth`.
+Add `pbv_lift` theorems with the blast width pre-filled, which lifts equalities
+to the blast width by wrapping both sides in a `setWidth`.
 -/
-meta def addEqIff (g : MVarId) (blastWidth : Nat) (simp : SimpTheoremsArray) :
+meta def addLiftThms (g : MVarId) (blastWidth : Nat) (simp : SimpTheoremsArray) :
     MetaM SimpTheoremsArray := g.withContext do
   let liftThms ← labelled `pbv_lift
   liftThms.foldlM (init := simp) fun simp name => do
@@ -677,7 +677,7 @@ meta def pbvTranslate (g : MVarId) (ctx : PbvDecideContext) : MetaM (MVarId × L
   let (g, bvInfos) ← introMaskedBitvectors bvsToRevert g widthInfos
   -- Lift equalities to the blast width. A single pass applies `eq_iff` once:
   -- otherwise the lifted equality, now at the blast width, gets lifted again.
-  let eqThms ← addEqIff g blastWidth <| ← addWidthInfosSimpLemmas g widthInfos #[]
+  let eqThms ← addLiftThms g blastWidth <| ← addWidthInfosSimpLemmas g widthInfos #[]
   let g ← applySimp g eqThms { decide := false, singlePass := true }
   -- Create simp set to push the `setWidth`s in
   let thms := ← addPushTheorems g blastWidth
