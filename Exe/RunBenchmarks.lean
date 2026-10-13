@@ -19,14 +19,6 @@ def getPCFrom (c : Option String) :=
     | none => 100
     | some n => n
 
-def bench (f: IO Unit) (count : Nat) : IO Unit := do
-  let startTime ← IO.monoMsNow
-  f
-  let endTime ← IO.monoMsNow
-  let elapsedTime := endTime - startTime
-  IO.println s!"Elapsed time: {elapsedTime} miliseconds"
-  IO.println s!"ns per op : {(elapsedTime * 1000 * 1000) / count}"
-
 def main (args : List String) : IO Unit := do
   Veir.enableExitOnPanic
   IO.println s!"Benchmark ({args})"
