@@ -1,18 +1,26 @@
 {
   description = "Verified Intermediate Representation";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
   outputs = { self, nixpkgs, ... }:
     let
       systems = [
         "aarch64-darwin"
         "aarch64-linux"
-        "x86_64-darwin"
         "x86_64-linux"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
       llvmPackages = pkgs: pkgs.llvmPackages_23;
+
+      # Lean's prebuilt macOS libraries require macOS 15.
+      developmentEnvironment = pkgs: {
+        # ExArray uses Clang LTO and needs its compiler wrapper and LLVM archiver.
+        LEAN_AR = "${(llvmPackages pkgs).llvm}/bin/llvm-ar";
+        LEAN_CC = "${self}/ExArray/compiler";
+      } // nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+        MACOSX_DEPLOYMENT_TARGET = "15.0";
+      };
 
       developmentPackages = pkgs: with pkgs; [
         bash
@@ -21,13 +29,7 @@
         gmp
         gnumake
         (llvmPackages pkgs).llvm
-        ((llvmPackages pkgs).mlir.overrideAttrs (oldAttrs: {
-          # Nixpkgs does not enable MLIR's test dialect. VeIR's PDL tests
-          # use that dialect when checking compatibility with mlir-opt.
-          cmakeFlags = oldAttrs.cmakeFlags ++ [
-            (lib.cmakeBool "MLIR_INCLUDE_TESTS" true)
-          ];
-        }))
+        (llvmPackages pkgs).mlir
         pkg-config
         uv
       ];
@@ -39,9 +41,8 @@
           package = pkgs.writeShellApplication {
             name = "veir-${suffix}";
             runtimeInputs = developmentPackages pkgs;
+            runtimeEnv = developmentEnvironment pkgs;
             text = ''
-              export LEAN_AR="${(llvmPackages pkgs).llvm}/bin/llvm-ar"
-              export LEAN_CC="${self}/ExArray/compiler"
               exec ${command} "$@"
             '';
           };
@@ -60,9 +61,8 @@
           package = pkgs.writeShellApplication {
             name = target;
             runtimeInputs = developmentPackages pkgs;
+            runtimeEnv = developmentEnvironment pkgs;
             text = ''
-              export LEAN_AR="${(llvmPackages pkgs).llvm}/bin/llvm-ar"
-              export LEAN_CC="${self}/ExArray/compiler"
               exec lake exe ${target} "$@"
             '';
           };
@@ -79,14 +79,12 @@
           pkgs = nixpkgs.legacyPackages.${system};
         in
         {
-          default = pkgs.mkShell {
+          default = pkgs.mkShell ({
             packages = developmentPackages pkgs;
-
-            # ExArray uses Clang LTO and therefore needs its compiler wrapper
-            # together with LLVM's archiver.
-            LEAN_AR = "${(llvmPackages pkgs).llvm}/bin/llvm-ar";
-            LEAN_CC = "${self}/ExArray/compiler";
-          };
+            buildInputs = nixpkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+              (pkgs.darwinMinVersionHook "15.0")
+            ];
+          } // developmentEnvironment pkgs);
         });
 
       apps = forAllSystems (system:
