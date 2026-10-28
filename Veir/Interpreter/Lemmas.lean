@@ -658,14 +658,6 @@ theorem interpretOpChain_eq_interpretTerminatedOpList_of_firstOp
 
 end interpretOpList
 
-/-- An operation that verifies does not fail interpretation as long as the operands conform to
-the declared operand types. -/
-axiom interpretOp'_ne_fail {ctx : WfIRContext OpCode} {op : OperationPtr}
-    {opInBounds : op.InBounds ctx.raw} (opVerify : OperationPtr.Verified ctx op opInBounds)
-    (operandConforms : RuntimeValue.ArrayConforms operands (op.getOperandTypes! ctx.raw))
-    (mem : MemoryState) :
-  (op.interpret ctx.raw operands mem).isFail = false
-
 /--
 Monotonicity of `interpretOp'` in its operands, as a class so that a dialect can discharge it for
 its own opcodes without this file knowing about the dialect.

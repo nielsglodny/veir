@@ -283,55 +283,6 @@ theorem InterpreterState.EquationLemmaAt.setArgumentValues?_succ_entry (ctxDom :
   have := hExit op opIn hPure opDomAtEnd
   grind [InterpreterState.EquationHolds.setArgumentValues?_of_dominatesIp]
 
-/-- Interpreting a locally reachable verified operation never fails on a state satisfying
-`DefinesDominating` at the operation's location. -/
-theorem InterpreterState.DefinesDominating.interpretOp_ne_fail
-    (ctxDom : ctx.Dom root) (opInRoot : root.Ancestor op ctx) {state : InterpreterState ctx}
-    (opReachable : op.LocallyReachable region ctx)
-    (stateDom : state.DefinesDominating (InsertPoint.before op) ipInBounds)
-    (opVerif : op.Verified ctx opInBounds) :
-    (interpretOp op state opInBounds).isFail = false := by
-  simp only [interpretOp, Interp.isFail_withBlame]
-  have ⟨operandValues, hOperandValues⟩ :=
-    stateDom.exists_getOperandValues_eq_some ctxDom opInRoot opReachable
-  simp only [hOperandValues]
-  have hconforms : RuntimeValue.ArrayConforms operandValues (op.getOperandTypes! ctx.raw) := by
-    grind [VariableState.getOperandValues_conforms]
-  have hne := interpretOp'_ne_fail opVerif hconforms state.memory
-  rcases hresValues : op.interpret ctx operandValues state.memory with _ | _ | ⟨resValues, mem', act⟩
-  · simp [hresValues] at hne
-  · simp
-  · simp only [liftM, monadLift, MonadLift.monadLift]
-    have := interpretOp'_results_conform opVerif hconforms hresValues
-    have ⟨v, hv⟩ :=
-      (VariableState.setResultValues?_isSome_iff_conforms state.variables opInBounds).mp this
-    simp [hv]
-
-/-- `interpretOpList` never fails (returns `.fail`) on a slice of an operation chain in a locally
-reachable block, given a verified and well-dominated context and an interpreter state containing
-all values dominating the first operation in the slice. -/
-theorem InterpreterState.DefinesDominating.interpretOpList_ne_fail
-    {root : OperationPtr} (ctxVerif : ctx.Verified root) (ctxDom : ctx.Dom root) {block : BlockPtr}
-    (blockInRoot : root.Ancestor block ctx)
-    (blockReachable : block.LocallyReachable region ctx)
-    (hChain : block.OpChainSlice ctx.raw ops)
-    {state : InterpreterState ctx}
-    (stateDom : ∀ head, (hhead : ops.head? = some head) →
-      state.DefinesDominating (.before head) (by grind [List.mem_of_head? hhead])) :
-    (interpretOpList ops state).isFail = false := by
-  induction ops generalizing state with
-  | nil => simp
-  | cons a l ih =>
-    have hDom : state.DefinesDominating (.before a) := stateDom a (by simp)
-    obtain ⟨headInBounds, headParent, headNext, hChainTail⟩ := hChain
-    have headInRoot : root.Ancestor a ctx := by
-      grind [IRNode.Ancestor.of_ancestor_parent_of_parent_descendant]
-    simp only [interpretOpList_cons]
-    rcases hi : interpretOp a state (by grind) with _ | _ | ⟨s, act⟩
-    · grind [InterpreterState.DefinesDominating.interpretOp_ne_fail]
-    · simp
-    · grind [interpretOp_DefinesDominating hDom headParent hi]
-
 /-- If the equation lemma holds at the point *before* an operation chain, interpreting the chain
 keeps the equation lemma valid at the point *after* the chain. -/
 theorem interpretOpList_equationLemmaAt {ctx : WfIRContext OpCode}
