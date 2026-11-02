@@ -5,11 +5,11 @@ import Veir.Interpreter.Evaluate
 open Veir
 open Veir.Data
 
-private def bv8 : SMT.SortType := .bv 8
-private def bv16 : SMT.SortType := .bv 16
+private def bv8 : SMT.SortType := SMT.bvSort 8
+private def bv16 : SMT.SortType := SMT.bvSort 16
 private def bv8Ty : TypeAttr := TypeAttr.of SMT.SortType bv8
 private def bv16Ty : TypeAttr := TypeAttr.of SMT.SortType bv16
-private def boolTy : TypeAttr := TypeAttr.of SMT.SortType .bool
+private def boolTy : TypeAttr := TypeAttr.of SMT.SortType SMT.boolSort
 
 /-- `smt.bv.add` builds the corresponding SMT term instead of computing a
     bit-vector. -/
@@ -55,7 +55,7 @@ private def testSMTEq : String := Id.run do
     (foldEvaluate (.smt .eq) () #[boolTy] #[.smt bv16 lhs, .smt bv16 rhs]
       : Interp (Array RuntimeValue))
     | return "smt.eq did not evaluate"
-  if results.toList ≠ [.smt .bool (.eq bv16 lhs rhs)] then
+  if results.toList ≠ [.smt SMT.boolSort (.eq bv16 lhs rhs)] then
     return "smt.eq produced an unexpected term"
   return "ok"
 
@@ -67,13 +67,13 @@ info: "ok"
 
 /-- `smt.eq` works on Boolean operands too, so that terms can be nested. -/
 private def testSMTEqOfBool : String := Id.run do
-  let lhs : SMT.Term .bool := .eq bv8 (.bvVar (w := 8) "x") (.bvVar (w := 8) "y")
-  let rhs : SMT.Term .bool := .eq bv8 (.bvVar (w := 8) "y") (.bvVar (w := 8) "x")
+  let lhs : SMT.Term SMT.boolSort := .eq bv8 (.bvVar (w := 8) "x") (.bvVar (w := 8) "y")
+  let rhs : SMT.Term SMT.boolSort := .eq bv8 (.bvVar (w := 8) "y") (.bvVar (w := 8) "x")
   let .ok results :=
-    (foldEvaluate (.smt .eq) () #[boolTy] #[.smt .bool lhs, .smt .bool rhs]
+    (foldEvaluate (.smt .eq) () #[boolTy] #[.smt SMT.boolSort lhs, .smt SMT.boolSort rhs]
       : Interp (Array RuntimeValue))
     | return "smt.eq did not evaluate on Boolean operands"
-  if results.toList ≠ [.smt .bool (.eq .bool lhs rhs)] then
+  if results.toList ≠ [.smt SMT.boolSort (.eq SMT.boolSort lhs rhs)] then
     return "smt.eq produced an unexpected term"
   return "ok"
 
@@ -101,9 +101,9 @@ info: "ok"
 
 /-- `smt.bv.add` rejects Boolean operands, since the result of adding is a bit-vector. -/
 private def testSMTAddOfBool : String := Id.run do
-  let operand : SMT.Term .bool := .eq bv8 (.bvVar (w := 8) "x") (.bvVar (w := 8) "x")
+  let operand : SMT.Term SMT.boolSort := .eq bv8 (.bvVar (w := 8) "x") (.bvVar (w := 8) "x")
   let .fail _ :=
-    (foldEvaluate (.smt .bv__add) () #[boolTy] #[.smt .bool operand, .smt .bool operand]
+    (foldEvaluate (.smt .bv__add) () #[boolTy] #[.smt SMT.boolSort operand, .smt SMT.boolSort operand]
       : Interp (Array RuntimeValue))
     | return "smt.bv.add accepted Boolean operands"
   return "ok"

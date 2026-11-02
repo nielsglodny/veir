@@ -85,9 +85,9 @@ def SMT.verifyLocalInvariants {OpInfo : Type} [IsOpCode OpInfo] [HasDialect OpIn
     op.verifyPlainOpCounts ctx opIn 2 1
     let lhsType := (op.getOperand! ctx.raw 0).getType! ctx.raw
     let rhsType := (op.getOperand! ctx.raw 1).getType! ctx.raw
-    let some (.bv lhsWidth) := lhsType.smtSort?
+    let some (.inr ⟨lhsWidth⟩) := lhsType.smtSort?
       | throw s!"{instrName}: Expected operand 0 to have a bit-vector sort"
-    let some (.bv rhsWidth) := rhsType.smtSort?
+    let some (.inr ⟨rhsWidth⟩) := rhsType.smtSort?
       | throw s!"{instrName}: Expected operand 1 to have a bit-vector sort"
     if lhsWidth ≠ rhsWidth then
       throw s!"{instrName}: Expected operands to have the same bit-vector width"
@@ -96,7 +96,7 @@ def SMT.verifyLocalInvariants {OpInfo : Type} [IsOpCode OpInfo] [HasDialect OpIn
   | .bv__neg => do
     op.verifyPlainOpCounts ctx opIn 1 1
     let operandType := (op.getOperand! ctx.raw 0).getType! ctx.raw
-    let some (.bv _) := operandType.smtSort?
+    let some (.inr _) := operandType.smtSort?
       | throw s!"{instrName}: Expected operand 0 to have a bit-vector sort"
     op.verifyResultTypeMatches ctx operandType
       s!"{instrName}: Expected result type to match operand type"
@@ -110,7 +110,7 @@ def SMT.verifyLocalInvariants {OpInfo : Type} [IsOpCode OpInfo] [HasDialect OpIn
       throw s!"{instrName}: Expected operand 1 to have an SMT sort"
     let _ ← op.verifyOperandTypesMatch ctx 0 1
       s!"{instrName}: Expected operands to have the same sort"
-    let expected : TypeAttr := TypeAttr.of SMT.SortType .bool
+    let expected : TypeAttr := TypeAttr.of SMT.SortType SMT.boolSort
     op.verifyResultTypeMatches ctx expected
       s!"{instrName}: Expected result 0 to have type !smt.bool"
 
@@ -120,19 +120,19 @@ def SMT.verifyLocalInvariants {OpInfo : Type} [IsOpCode OpInfo] [HasDialect OpIn
 def SMT.bvAddTerm? : (lhsSort : SMT.SortType) → (lhs : SMT.Term lhsSort) →
     (rhsSort : SMT.SortType) → (rhs : SMT.Term rhsSort) →
     Option ((sort : SMT.SortType) × SMT.Term sort)
-  | .bv w, lhs, .bv w', rhs =>
-    if h : w = w' then some ⟨.bv w, .bvAdd lhs (h ▸ rhs)⟩ else none
+  | .inr ⟨w⟩, lhs, .inr ⟨w'⟩, rhs =>
+    if h : w = w' then some ⟨SMT.bvSort w, .bvAdd lhs (h ▸ rhs)⟩ else none
   | _, _, _, _ => none
 
 def SMT.bvNegTerm? : (operandSort : SMT.SortType) → (operand : SMT.Term operandSort) →
     Option ((sort : SMT.SortType) × SMT.Term sort)
-  | .bv w, operand => some ⟨.bv w, .bvNeg operand⟩
-  | .bool, _ => none
+  | .inr ⟨w⟩, operand => some ⟨SMT.bvSort w, .bvNeg operand⟩
+  | .inl _, _ => none
 
 def SMT.eqTerm? : (lhsSort : SMT.SortType) → (lhs : SMT.Term lhsSort) →
     (rhsSort : SMT.SortType) → (rhs : SMT.Term rhsSort) →
     Option ((sort : SMT.SortType) × SMT.Term sort)
-  | s, lhs, s', rhs => if h : s = s' then some ⟨.bool, .eq s lhs (h ▸ rhs)⟩ else none
+  | s, lhs, s', rhs => if h : s = s' then some ⟨SMT.boolSort, .eq s lhs (h ▸ rhs)⟩ else none
 
 /--
   Build a symbolic expression.

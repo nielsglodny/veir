@@ -2,6 +2,7 @@ module
 
 import Veir.ForLean
 public import Veir.Data.Float
+public import Veir.Data.SMT.Basic
 public import Lean.Elab.Command
 public import Std.Data.Iterators.Producers.Array
 
@@ -375,24 +376,6 @@ deriving Inhabited, Repr, DecidableEq, Hashable
 /-- The bitwidth of the storage type of a `!mod_arith.int`. -/
 public def ModArithType.bitwidth (ty : ModArithType) : Nat :=
   ty.modulus.type.bitwidth
-
-namespace SMT
-
-/--
-  An SMT sort type, i.e. `!smt.bool` or `!smt.bv<width>`. Sorts are the types of
-  the SMT dialect; they mirror MLIR's `!smt.bool` and `!smt.bv<width>`.
--/
-inductive SortType where
-| bool
-| bv (width : Nat)
-deriving Inhabited, Repr, DecidableEq, Hashable
-
-/-- The width of a bit-vector sort, if this sort is one. -/
-def SortType.bvWidth? : SortType → Option Nat
-| .bool => none
-| .bv width => some width
-
-end SMT
 
 namespace PDL
 
@@ -1151,11 +1134,6 @@ instance : ToString Seq.FirMemType where
       | some maskWidth => s!", mask {maskWidth}"
       | none => ""
     s!"!seq.firmem<{type.depth} x {type.width}{mask}>"
-
-instance : ToString SMT.SortType where
-  toString type := match type with
-    | .bool => "!smt.bool"
-    | .bv width => s!"!smt.bv<{width}>"
 
 mutual
 

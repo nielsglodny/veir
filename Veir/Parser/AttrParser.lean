@@ -1063,13 +1063,13 @@ def parseOptionalSMTSortType : AttrParserM (Option TypeAttr) := do
   if !isBool && !isBv then return none
   let _ ← consumeToken
   if isBool then
-    return some (TypeAttr.of SMT.SortType .bool)
+    return some (TypeAttr.of SMT.SortType SMT.boolSort)
   parsePunctuation "<"
   let width ← parseInteger false false
   parsePunctuation ">"
   if width ≤ 0 then
     throwAtCurrentPos "SMT bit-vector width must be positive"
-  return some (TypeAttr.of SMT.SortType (.bv width.toNat))
+  return some (TypeAttr.of SMT.SortType (SMT.bvSort width.toNat))
 
 /-- A parsed entry in an LLVM function type's parameter list. -/
 inductive LLVMFuncParam
