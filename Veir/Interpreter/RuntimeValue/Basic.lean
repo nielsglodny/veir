@@ -24,7 +24,7 @@ inductive RuntimeValue where
 /-- A canonical natural-number representative in the field identified by `fieldType`. -/
 | felt (fieldType : FeltType) (value : Nat)
 /-- A symbolic SMT term. -/
-| smt (sort : SMT.SortType) (term : Data.SMT.Term sort)
+| smt (sort : Data.SMT.SortType) (term : Data.SMT.Term sort)
 deriving Inhabited, BEq, DecidableEq
 
 instance : ToString RuntimeValue where

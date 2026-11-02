@@ -7,9 +7,9 @@ open Veir.Data
 
 private def bv8 : SMT.SortType := SMT.bvSort 8
 private def bv16 : SMT.SortType := SMT.bvSort 16
-private def bv8Ty : TypeAttr := TypeAttr.of SMT.SortType bv8
-private def bv16Ty : TypeAttr := TypeAttr.of SMT.SortType bv16
-private def boolTy : TypeAttr := TypeAttr.of SMT.SortType SMT.boolSort
+private def bv8Ty : TypeAttr := TypeAttr.of SMT.BvType ⟨8⟩
+private def bv16Ty : TypeAttr := TypeAttr.of SMT.BvType ⟨16⟩
+private def boolTy : TypeAttr := TypeAttr.of SMT.BoolType default
 
 /-- `smt.bv.add` builds the corresponding SMT term instead of computing a
     bit-vector. -/

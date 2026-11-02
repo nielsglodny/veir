@@ -1,28 +1,16 @@
 module
 
-import Veir.ForLean
+public import Veir.IR.Attribute
 
-namespace Veir.SMT
+namespace Veir.Data.SMT
+
+open Veir.SMT
 
 public section
 
 /--
-  The `!smt.bool` sort, the type of Boolean SMT terms.
--/
-structure BoolType where
-deriving Inhabited, Repr, DecidableEq, Hashable
-
-/--
-  The `!smt.bv<width>` sort, the type of bit-vector SMT terms of a given width.
--/
-structure BvType where
-  /-- The bit-vector width. -/
-  width : Nat
-deriving Inhabited, Repr, DecidableEq, Hashable
-
-/--
   An SMT sort is either the Boolean sort or a bit-vector sort. Sorts are the
-  types of the SMT dialect; they mirror MLIR's `!smt.bool` and `!smt.bv<width>`.
+  types of SMT terms; they mirror MLIR's `!smt.bool` and `!smt.bv<width>`.
 -/
 abbrev SortType := BoolType ⊕ BvType
 
@@ -37,28 +25,10 @@ def SortType.bvWidth? : SortType → Option Nat
   | .inl _ => none
   | .inr bv => some bv.width
 
-instance : Inhabited SortType where
-  default := .inl default
-
-instance : ToString SortType where
-  toString
-    | .inl _ => "!smt.bool"
-    | .inr bv => s!"!smt.bv<{bv.width}>"
-
 instance : Hashable SortType where
   hash
     | .inl boolTy => mixHash 0 (hash boolTy)
     | .inr bvTy => mixHash 1 (hash bvTy)
-
-end
-
-end Veir.SMT
-
-namespace Veir.Data.SMT
-
-open Veir.SMT
-
-public section
 
 /--
   The operational semantics of SMT terms are defined to be a symbolic AST.
@@ -91,3 +61,18 @@ instance : ToString (Term s) where
 end
 
 end Veir.Data.SMT
+
+namespace Veir
+
+public section
+
+/-- The SMT sort of an SMT type attribute, if it is one. -/
+def TypeAttr.smtSort? (ty : TypeAttr) : Option Data.SMT.SortType :=
+  match ty.val with
+  | .smtBoolType _ => some Data.SMT.boolSort
+  | .smtBvType bvTy => some (Data.SMT.bvSort bvTy.width)
+  | _ => none
+
+end
+
+end Veir

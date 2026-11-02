@@ -63,15 +63,6 @@ instance : IsOpCode SMT where
   toAttrDict := SMT.toAttrDict
 
 /--
-  The SMT sort of the SMT type `ty`.
-  Returns `none` if `ty` is not an SMT type.
--/
-def TypeAttr.smtSort? (ty : TypeAttr) : Option SMT.SortType :=
-  match ty.val with
-  | .smtSortType sortType => some sortType
-  | _ => none
-
-/--
 Verify the local invariants of a `smt` operation in any operation-info type
 containing the `smt` dialect.
 -/
@@ -110,7 +101,7 @@ def SMT.verifyLocalInvariants {OpInfo : Type} [IsOpCode OpInfo] [HasDialect OpIn
       throw s!"{instrName}: Expected operand 1 to have an SMT sort"
     let _ ← op.verifyOperandTypesMatch ctx 0 1
       s!"{instrName}: Expected operands to have the same sort"
-    let expected : TypeAttr := TypeAttr.of SMT.SortType SMT.boolSort
+    let expected : TypeAttr := TypeAttr.of SMT.BoolType default
     op.verifyResultTypeMatches ctx expected
       s!"{instrName}: Expected result 0 to have type !smt.bool"
 

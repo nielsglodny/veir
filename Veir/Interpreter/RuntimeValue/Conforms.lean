@@ -30,7 +30,8 @@ def Conforms (val : RuntimeValue) (ty : TypeAttr) : Prop :=
   | .addr _, ⟨.llvmPointerType _, _⟩ => True
   | .felt fieldType value, ⟨.feltType expectedType, _⟩ =>
     fieldType = expectedType ∧ FeltSemantics.IsCanonical fieldType value
-  | .smt sort _, ⟨.smtSortType sortType, _⟩ => sort = sortType
+  | .smt sort _, ⟨.smtBoolType boolTy, _⟩ => sort = .inl boolTy
+  | .smt sort _, ⟨.smtBvType bvTy, _⟩ => sort = .inr bvTy
   | _, _ => False
 
 instance : Decidable (Conforms val ty) := by
@@ -42,35 +43,75 @@ theorem Conforms.integerType :
     Conforms runtimeValue (.of IntegerType intType) ↔
     ∃ val, runtimeValue = .int intType.bitwidth val := by
   simp only [TypeAttr.of_def, Attribute.of_def, IsAttr.inject, Conforms]
-  grind
+  cases runtimeValue with
+  | int bitwidth value =>
+    constructor
+    · intro h
+      cases h
+      exact ⟨value, rfl⟩
+    · rintro ⟨val', h⟩
+      have hbw : bitwidth = intType.bitwidth :=
+        congrArg (fun v => match v with | .int bw _ => bw | _ => 0) h
+      exact hbw.symm
+  | _ => simp
 
 @[simp, grind =]
 theorem Conforms.byteType {runtimeValue byteType} :
     Conforms runtimeValue (.of LLVM.ByteType byteType) ↔
     ∃ val, runtimeValue = .byte byteType.bitwidth val := by
   simp only [TypeAttr.of_def, Attribute.of_def, IsAttr.inject, Conforms]
-  grind
+  cases runtimeValue with
+  | byte bitwidth value =>
+    constructor
+    · intro h
+      cases h
+      exact ⟨value, rfl⟩
+    · rintro ⟨val', h⟩
+      have hbw : bitwidth = byteType.bitwidth :=
+        congrArg (fun v => match v with | .byte bw _ => bw | _ => 0) h
+      exact hbw.symm
+  | _ => simp
 
 @[simp, grind =]
 theorem Conforms.floatType :
     Conforms runtimeValue (.of FloatType fltType) ↔
     ∃ val, runtimeValue = .float fltType val := by
   simp only [TypeAttr.of_def, Attribute.of_def, IsAttr.inject, Conforms]
-  grind
+  cases runtimeValue with
+  | float type value =>
+    constructor
+    · intro h
+      cases h
+      exact ⟨value, rfl⟩
+    · rintro ⟨val', h⟩
+      have hty : type = fltType :=
+        congrArg (fun v => match v with | .float ty _ => ty | _ => default) h
+      exact hty.symm
+  | _ => simp
 
 @[simp, grind =]
 theorem Conforms.modArithType {runtimeValue modArithType} :
     Conforms runtimeValue (.of ModArithType modArithType) ↔
     ∃ val, runtimeValue = .int modArithType.modulus.type.bitwidth val := by
   simp only [TypeAttr.of_def, Attribute.of_def, IsAttr.inject, Conforms]
-  grind
+  cases runtimeValue with
+  | int bitwidth value =>
+    constructor
+    · intro h
+      cases h
+      exact ⟨value, rfl⟩
+    · rintro ⟨val', h⟩
+      have hbw : bitwidth = modArithType.modulus.type.bitwidth :=
+        congrArg (fun v => match v with | .int bw _ => bw | _ => 0) h
+      exact hbw.symm
+  | _ => simp
 
 @[simp, grind =]
 theorem Conforms.registerType :
     Conforms runtimeValue (.of RegisterType regType) ↔
     ∃ val, runtimeValue = .reg val := by
   simp only [TypeAttr.of_def, Attribute.of_def, IsAttr.inject, Conforms]
-  grind
+  cases runtimeValue <;> grind
 
 @[simp, grind =]
 theorem Conforms.llvmPointerType :
@@ -80,9 +121,9 @@ theorem Conforms.llvmPointerType :
   cases runtimeValue <;> grind
 
 @[simp, grind =]
-theorem Conforms.smtSortType {runtimeValue sortTy} :
-    Conforms runtimeValue (.of SMT.SortType sortTy) ↔
-    ∃ term : Data.SMT.Term sortTy, runtimeValue = .smt sortTy term := by
+theorem Conforms.smtBoolType {runtimeValue boolTy} :
+    Conforms runtimeValue (.of SMT.BoolType boolTy) ↔
+    ∃ term : Data.SMT.Term (.inl boolTy), runtimeValue = .smt (.inl boolTy) term := by
   simp only [TypeAttr.of_def, Attribute.of_def, IsAttr.inject, Conforms]
   cases runtimeValue with
   | smt sort term =>
@@ -92,7 +133,25 @@ theorem Conforms.smtSortType {runtimeValue sortTy} :
       subst h
       exact ⟨term, rfl⟩
     · rintro ⟨term', h⟩
-      have hs : some sort = some sortTy :=
+      have hs : some sort = some (.inl boolTy) :=
+        congrArg (fun v => match v with | .smt sort _ => some sort | _ => none) h
+      exact Option.some.inj hs
+  | _ => simp
+
+@[simp, grind =]
+theorem Conforms.smtBvType {runtimeValue bvTy} :
+    Conforms runtimeValue (.of SMT.BvType bvTy) ↔
+    ∃ term : Data.SMT.Term (.inr bvTy), runtimeValue = .smt (.inr bvTy) term := by
+  simp only [TypeAttr.of_def, Attribute.of_def, IsAttr.inject, Conforms]
+  cases runtimeValue with
+  | smt sort term =>
+    simp only
+    constructor
+    · intro h
+      subst h
+      exact ⟨term, rfl⟩
+    · rintro ⟨term', h⟩
+      have hs : some sort = some (.inr bvTy) :=
         congrArg (fun v => match v with | .smt sort _ => some sort | _ => none) h
       exact Option.some.inj hs
   | _ => simp

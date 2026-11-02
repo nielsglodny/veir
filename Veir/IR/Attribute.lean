@@ -2,7 +2,6 @@ module
 
 import Veir.ForLean
 public import Veir.Data.Float
-public import Veir.Data.SMT.Basic
 public import Lean.Elab.Command
 public import Std.Data.Iterators.Producers.Array
 
@@ -376,6 +375,24 @@ deriving Inhabited, Repr, DecidableEq, Hashable
 /-- The bitwidth of the storage type of a `!mod_arith.int`. -/
 public def ModArithType.bitwidth (ty : ModArithType) : Nat :=
   ty.modulus.type.bitwidth
+
+namespace SMT
+
+/--
+  The `!smt.bool` type, for Boolean SMT terms.
+-/
+structure BoolType where
+deriving Inhabited, Repr, DecidableEq, Hashable
+
+/--
+  The `!smt.bv<width>` type, for bit-vector SMT terms of a given width.
+-/
+structure BvType where
+  /-- The bit-vector width. -/
+  width : Nat
+deriving Inhabited, Repr, DecidableEq, Hashable
+
+end SMT
 
 namespace PDL
 
@@ -815,8 +832,10 @@ inductive Attribute
 | seqClockType (type : Seq.ClockType)
 /-- CIRCT seq FIRRTL-flavored memory type -/
 | seqFirMemType (type : Seq.FirMemType)
-/-- SMT sort type (`!smt.bool` or `!smt.bv<width>`) -/
-| smtSortType (type : SMT.SortType)
+/-- SMT Boolean sort type (`!smt.bool`) -/
+| smtBoolType (type : SMT.BoolType)
+/-- SMT bit-vector sort type (`!smt.bv<width>`) -/
+| smtBvType (type : SMT.BvType)
 deriving Inhabited
 
 end
@@ -1135,6 +1154,12 @@ instance : ToString Seq.FirMemType where
       | none => ""
     s!"!seq.firmem<{type.depth} x {type.width}{mask}>"
 
+instance : ToString SMT.BoolType where
+  toString _ := "!smt.bool"
+
+instance : ToString SMT.BvType where
+  toString type := s!"!smt.bv<{type.width}>"
+
 mutual
 
 partial def VectorType.toString (type : VectorType) : String :=
@@ -1282,7 +1307,8 @@ partial def Attribute.toString (attr : Attribute) : String :=
   | .matchOptionalType type => type.toString
   | .seqClockType type => ToString.toString type
   | .seqFirMemType type => ToString.toString type
-  | .smtSortType type => ToString.toString type
+  | .smtBoolType type => ToString.toString type
+  | .smtBvType type => ToString.toString type
 
 end
 
@@ -1826,7 +1852,9 @@ def Attribute.decEq (attr1 attr2 : @& Attribute) : Decidable (attr1 = attr2) := 
     exact IsAttr.decEqAgainst x attr2 (decEq x)
   case seqFirMemType x =>
     exact IsAttr.decEqAgainst x attr2 (decEq x)
-  case smtSortType x =>
+  case smtBoolType x =>
+    exact IsAttr.decEqAgainst x attr2 (decEq x)
+  case smtBvType x =>
     exact IsAttr.decEqAgainst x attr2 (decEq x)
 termination_by sizeOf attr1
 decreasing_by
@@ -1915,7 +1943,8 @@ def isType (attr : Attribute) : Bool :=
   | .matchOptionalType _ => true
   | .seqClockType _ => true
   | .seqFirMemType _ => true
-  | .smtSortType _ => true
+  | .smtBoolType _ => true
+  | .smtBvType _ => true
 
 /--
   Returns the size, in bits, that an LLVM type would use if stored to memory.
@@ -2018,7 +2047,9 @@ theorem isType_seqClockType type : (Attribute.of Seq.ClockType type).isType = tr
 @[simp, grind =]
 theorem isType_seqFirMemType type : (Attribute.of Seq.FirMemType type).isType = true := by rfl
 @[simp, grind =]
-theorem isType_smtSortType type : (Attribute.of SMT.SortType type).isType = true := by rfl
+theorem isType_smtBoolType type : (Attribute.of SMT.BoolType type).isType = true := by rfl
+@[simp, grind =]
+theorem isType_smtBvType type : (Attribute.of SMT.BvType type).isType = true := by rfl
 
 end Attribute
 
@@ -2244,7 +2275,8 @@ type_attribute_instance PDL.ValueType => Attribute.pdlValueType
 type_attribute_instance PDL.TypeType => Attribute.pdlTypeType
 type_attribute_instance Seq.ClockType => Attribute.seqClockType
 type_attribute_instance Seq.FirMemType => Attribute.seqFirMemType
-type_attribute_instance SMT.SortType => Attribute.smtSortType
+type_attribute_instance SMT.BoolType => Attribute.smtBoolType
+type_attribute_instance SMT.BvType => Attribute.smtBvType
 
 instance : CoeDep (Option Int → RegisterType) RegisterType.mk TypeAttr where
   coe := TypeAttr.of RegisterType (.mk none)
