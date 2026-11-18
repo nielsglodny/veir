@@ -3,6 +3,8 @@ module
 public import Veir.IR.Simp
 public import Veir.IR.OpInfo
 public import Veir.Verifier.Basic
+public import Veir.Interpreter.RuntimeValue.Basic
+public import Veir.Interpreter.Interp
 
 meta import Veir.Meta.OpCode
 
@@ -110,6 +112,25 @@ def SMT.verifyLocalInvariants {OpInfo : Type} [IsOpCode OpInfo] [HasDialect OpIn
     let expected : TypeAttr := TypeAttr.of SMT.SortType .bool
     op.verifyResultTypeMatches ctx expected
       s!"{instrName}: Expected result 0 to have type !smt.bool"
+
+/--
+  Build a symbolic expression.
+
+  We must re-check the sorts, since the operands arrive with their types erased.
+-/
+def SMT.interpretOp' (opType : SMT) (_properties : SMT.propertiesOf opType)
+    (resultTypes : Array TypeAttr) (operands : Array RuntimeValue)
+    (_blockOperands : Array BlockPtr) :
+    Interp (Array RuntimeValue × Option ControlFlowAction) := do
+  let term : Data.SMT.Term ← match opType, operands.toList with
+    | .bv__add, [.smt lhs, .smt rhs] => pure (.bvAdd lhs rhs)
+    | .bv__neg, [.smt operand] => pure (.bvNeg operand)
+    | .eq, [.smt lhs, .smt rhs] => pure (.eq lhs rhs)
+    | _, _ => none
+  let some sort := term.sort? | none
+  let [resultType] := resultTypes.toList | none
+  if resultType.smtSort? ≠ some sort then none
+  return (#[.smt term], none)
 
 instance : HasOpInfo SMT where
   verifyLocalInvariants := SMT.verifyLocalInvariants
