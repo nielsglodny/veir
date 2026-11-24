@@ -6,6 +6,7 @@ public import Veir.Dialects.Builtin.Interpreter
 public import Veir.Dialects.LLVM.Interpreter
 public import Veir.Dialects.GMIR.Interpreter
 public import Veir.Dialects.RISCV.Interpreter
+public import Veir.Dialects.SMT.Interpreter
 
 public section
 
@@ -38,6 +39,7 @@ def interpretOp' (opType : OpCode) (properties : propertiesOf opType)
     Builtin.interpretOpCTree opType properties resultTypes operands blockOperands mem
   | .func .call => interpretCall Func.callInterface properties operands mem
   | .riscv_cf .call => interpretCall Riscv_Cf.callInterface properties operands mem
+  | .smt opType => SMT.interpretOpCTree opType operands mem
   /- Other dialects rely on lifting the `Interp`-based interpreter. -/
   | opType =>
     monadLift <| Veir.interpretOp' opType properties resultTypes operands blockOperands mem
@@ -81,7 +83,10 @@ def interpretOp (op : OperationPtr) {ctx : WfIRContext OpCode}
   let opCTree := (interpretOp' opType (op.getProperties ctx.raw opType)
     (op.getResultTypes ctx.raw) operands (op.getSuccessors ctx.raw) state.memory
     (op.getRegions ctx.raw))
-  let opCTreeWithRegion : RegionTree _ _ _ := CTree.interp CTree.trigger opCTree
+  let opCTreeWithRegion : RegionTree _ _ _ := match opType with
+    /- `smt.solver` interprets its body itself. -/
+    | .smt .solver => SMT.interpretSolver (op.getRegions ctx.raw) state.memory
+    | _ => CTree.interp CTree.trigger opCTree
   /- Call the dialect-specific operation interpreter.
   While the user-defined interpreter calls region with a `MemoryState`, we here attach the
   `InterpreterState` as well. This prevents the user from using the `InterpreterState` directly. -/

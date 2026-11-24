@@ -17,12 +17,18 @@ inductive SMT where
 | bv__add
 | bv__neg
 | eq
+| not
+| declare_fun
+| assert
+| check
+| solver
+| yield
 deriving Inhabited, Repr, Hashable, DecidableEq
 
 @[expose, implicit_reducible, properties_of]
 def SMT.propertiesOf (op : SMT) : Type :=
 match op with
-| .bv__add | .bv__neg | .eq => Unit
+| _ => Unit
 
 def SMT.fromAttrDict
     (op : SMT) (_attrDict : Std.HashMap ByteArray Attribute) :
@@ -30,15 +36,17 @@ def SMT.fromAttrDict
   cases op <;> exact .ok ()
 
 def SMT.toAttrDict
-    (op : SMT) (_props : SMT.propertiesOf op) :
+    (_op : SMT) (_props : SMT.propertiesOf _op) :
     Std.HashMap ByteArray Attribute :=
-  match op with
-  | .bv__add | .bv__neg | .eq => Std.HashMap.emptyWithCapacity 0
+  Std.HashMap.emptyWithCapacity 0
 
+/-- Solver commands are not pure: they must neither be merged nor removed. -/
 @[get_effects]
 def SMT.getEffects
-    (_op : SMT) (_props : SMT.propertiesOf _op) : MemoryEffects :=
-  .none
+    (op : SMT) (_props : SMT.propertiesOf op) : MemoryEffects :=
+  match op with
+  | .declare_fun | .assert | .check | .solver => .unknown
+  | .bv__add | .bv__neg | .eq | .not | .yield => .none
 
 /-- SMT terms are symbolic, so poison never flows through an SMT operation. -/
 def SMT.propagatesPoison (_op : SMT) : Bool :=
@@ -49,6 +57,10 @@ def SMT.isConstantLike (_op : SMT) : Bool :=
 
 def SMT.hasSSADominance (_op : SMT) (_index : Nat) : Bool :=
   true
+
+@[is_terminator]
+def SMT.isTerminator (op : SMT) : Bool :=
+  op = .yield
 
 #generate_dialect SMT
 
@@ -110,6 +122,12 @@ def SMT.verifyLocalInvariants {OpInfo : Type} [IsOpCode OpInfo] [HasDialect OpIn
     let expected : TypeAttr := TypeAttr.of SMT.SortType .bool
     op.verifyResultTypeMatches ctx expected
       s!"{instrName}: Expected result 0 to have type !smt.bool"
+  /- Only Boolean free variables are supported so far. -/
+  | .declare_fun => do
+    op.verifyPlainOpCounts ctx opIn 0 1
+    op.verifyResultTypeMatches ctx (TypeAttr.of SMT.SortType .bool)
+      s!"{instrName}: Expected result 0 to have type !smt.bool"
+  | .not | .assert | .check | .solver | .yield => pure ()
 
 instance : HasOpInfo SMT where
   verifyLocalInvariants := SMT.verifyLocalInvariants
@@ -117,6 +135,7 @@ instance : HasOpInfo SMT where
   isConstantLike := SMT.isConstantLike
   propagatesPoison := SMT.propagatesPoison
   hasSSADominance := SMT.hasSSADominance
+  isTerminator := SMT.isTerminator
 
 end
 
