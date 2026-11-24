@@ -31,6 +31,7 @@ def Conforms (val : RuntimeValue) (ty : TypeAttr) : Prop :=
   | .addr _, ⟨.llvmPointerType _, _⟩ => True
   | .felt fieldType value, ⟨.feltType expectedType, _⟩ =>
     fieldType = expectedType ∧ FeltSemantics.IsCanonical fieldType value
+  | .smtBool _, ⟨.smtSortType .bool, _⟩ => True
   | _, _ => False
 
 instance : Decidable (Conforms val ty) := by

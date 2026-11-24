@@ -42,6 +42,7 @@ def RuntimeValue.isRefinedBy (source target : RuntimeValue) : Prop :=
   | .addr s, .addr t => s ⊒ t
   | .reg s, .reg t => s = t
   | .felt fieldType s, .felt fieldType' t => fieldType = fieldType' ∧ s = t
+  | .smtBool s, .smtBool t => s = t
   | .float ty s, .float ty' t =>
       if h : ty = ty' then
         s = h ▸ t

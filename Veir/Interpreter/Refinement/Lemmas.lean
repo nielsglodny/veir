@@ -409,7 +409,7 @@ theorem RuntimeValue.glb?_greatest {c d e : RuntimeValue} (hc : c ⊒ e) (hd : d
   case addr.addr.addr p q r =>
     obtain ⟨m, hm, hme⟩ := LLVM.Ptr.glb?_greatest hc hd
     exact ⟨.addr m, by simp [RuntimeValue.glb?, hm], hme⟩
-  case reg.reg.reg =>
+  case reg.reg.reg | smtBool.smtBool.smtBool =>
     subst hc; subst hd; exact ⟨_, by simp [RuntimeValue.glb?], RuntimeValue.isRefinedBy_refl _⟩
   case felt.felt.felt =>
     obtain ⟨rfl, rfl⟩ := hc; obtain ⟨rfl, rfl⟩ := hd
@@ -433,7 +433,7 @@ theorem RuntimeValue.isRefinedBy_antisymm {c d : RuntimeValue} (h₁ : c ⊒ d) 
     simp only [Byte.cast_self] at h₁ h₂
     rw [Byte.isRefinedBy_antisymm h₁ h₂]
   case addr.addr p q => rw [Data.LLVM.Ptr.isRefinedBy_antisymm h₁ h₂]
-  case reg.reg => rw [h₁]
+  case reg.reg | smtBool.smtBool => rw [h₁]
   case felt.felt => obtain ⟨rfl, rfl⟩ := h₁; rfl
   case float.float =>
     split at h₁ <;> (try exact h₁.elim)
