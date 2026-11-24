@@ -18,9 +18,9 @@ of an `smt.solver`, which interprets them itself (`SMT.interpretSolver`).
 def SMT.interpretOpCTree {EIn : Type} {E : EIn → Type} [ErrorE -< E]
     (opType : SMT) (operands : Array RuntimeValue) (mem : MemoryState) :
     CTree E FreezeC (Array RuntimeValue × MemoryState × Option ControlFlowAction) :=
-  match opType, operands with
-  | .not, #[.smtBool x] => return (#[.smtBool !x], mem, none)
-  | .eq, #[.smtBool x, .smtBool y] => return (#[.smtBool (x == y)], mem, none)
+  match opType, operands.toList with
+  | .not, [.smtBool x] => return (#[.smtBool !x], mem, none)
+  | .eq, [.smtBool x, .smtBool y] => return (#[.smtBool (x == y)], mem, none)
   | .yield, _ => return (#[], mem, some (.return operands))
   | _, _ => fail
 
